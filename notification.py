@@ -1,7 +1,63 @@
+from flask import Flask, request, jsonify
+from flask_sqlalchemy import SQLAlchemy as alc
+
+app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = "mysql+mysqlconnector://root@localhost:3306/notifications"
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+db = alc(app)
+
+class Promotions(db.Model):
+    __tablename__ = 'promotions'
+
+    code = db.Column(db.String(10), primary_key = True)
+    discount = db.Column(db.Integer, nullable = False)
+    name = db.Column(db.String(50), nullable = False)
+    redemptions = db.Column(db.Integer, nullable = True)
+    start = db.Column(db.String(10), nullable = False)
+    end = db.Column(db.String(10), nullable = False)
+    message = db.Column(db.String(300), nullable = False)
 
 
-def create_promotion (promo_code, discount, description, customer_type):
+    def __init__(self, code, discount, name, redemptions, start, end, message):
+        self.code = code
+        self.discount = discount
+        self.name = name
+        self.redemptions = redemptions
+        self.start = start
+        self.end = end
+        self.message = message
 
-    
+    def json(self):
+        return {"code": self.code, "discount": self.discount, "name": self.name, "redemptions": self.redemptions, "start": self.start, "end": self.end, "message": self.message}
 
-    return
+class Applicability(db.Model):
+    __tablename__ = 'applicability'
+
+    code = db.Column(db.String(10), primary_key = True)
+    customer_type = db.Column(db.String(10), primary_key = True)
+
+    def __init__(self, code, customer_type):
+        self.code = code
+        self.customer_type = customer_type
+
+    def json(self):
+        return {"code": self.code, "customer_type": self.customer_type}
+
+
+@app.route("/create/<string:code>", methods = ['POST'])
+def create_promotion (code):
+
+    if Promotions.query.filter_by(code = code).first():
+        return jsonify({"error": "A promotion with promo code '{}' already exists.".format(code)}), 400
+
+    data = request.get_json()
+    promo = Promotions(code, **data)
+
+    try:
+        db.session.add(promo)
+        db.session.commit()
+    except:
+        return jsonify({"message": "An error occurred while creating the book."}), 500  
+
+    return jsonify(promo.json()), 201

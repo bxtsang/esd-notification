@@ -21,7 +21,7 @@ INSERT INTO `promotions` VALUES ('sleepy',20,'name of promotion',100,'2020-03-08
 DROP TABLE IF EXISTS `applicability`;
 CREATE TABLE `applicability` (
   `code` varchar(10) NOT NULL,
-  `customer_type` varchar(45) NOT NULL,
+  `customer_type` varchar(10) NOT NULL,
   PRIMARY KEY (`code`,`customer_type`),
   CONSTRAINT `applicability_fk1` FOREIGN KEY (`code`) REFERENCES `promotions` (`code`) ON DELETE NO ACTION ON UPDATE NO ACTION
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
