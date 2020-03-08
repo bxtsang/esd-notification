@@ -1,6 +1,6 @@
 
 
-def create_promotion (promo_code, customer_type):
+def create_promotion (promo_code, discount, description, customer_type):
 
     
 
