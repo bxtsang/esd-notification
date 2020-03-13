@@ -14,8 +14,8 @@ class Promotions(db.Model):
     discount = db.Column(db.Integer, nullable = False)
     name = db.Column(db.String(50), nullable = False)
     redemptions = db.Column(db.Integer, nullable = True)
-    start = db.Column(db.String(10), nullable = False)
-    end = db.Column(db.String(10), nullable = False)
+    start_date = db.Column(db.String(10), nullable = False)
+    end_date = db.Column(db.String(10), nullable = False)
     message = db.Column(db.String(300), nullable = False)
 
 
@@ -24,12 +24,12 @@ class Promotions(db.Model):
         self.discount = discount
         self.name = name
         self.redemptions = redemptions
-        self.start = start
-        self.end = end
+        self.start_date = start
+        self.end_date = end
         self.message = message
 
     def json(self):
-        return {"code": self.code, "discount": self.discount, "name": self.name, "redemptions": self.redemptions, "start": self.start, "end": self.end, "message": self.message}
+        return {"code": self.code, "discount": self.discount, "name": self.name, "redemptions": self.redemptions, "start": self.start_date, "end": self.end_date, "message": self.message}
 
 class Applicability(db.Model):
     __tablename__ = 'applicability'
@@ -57,7 +57,12 @@ def create_promotion (code):
     try:
         db.session.add(promo)
         db.session.commit()
-    except:
-        return jsonify({"message": "An error occurred while creating the book."}), 500  
+    except Exception as e:
+        print(e)
+        return jsonify({"message": "An error occurred while creating the promotion."}), 500  
 
     return jsonify(promo.json()), 201
+
+
+if __name__ == "__main__":
+    app.run(port=5000, debug=True)
