@@ -11,7 +11,7 @@ db = alc(app)
 class Promotions(db.Model):
     __tablename__ = 'promotions'
 
-    code = db.Column(db.String(10), primary_key = True)
+    code = db.Column(db.String(12), primary_key = True)
     discount = db.Column(db.Integer, nullable = False)
     name = db.Column(db.String(50), nullable = False)
     redemptions = db.Column(db.Integer, nullable = True)
@@ -57,18 +57,23 @@ def create_promotion(code):
 
     data = request.get_json()
     promo = Promotions(code, **data)
+    try:
+        db.session.add(promo)
+        db.session.commit()
+    except Exception as e:
+        print(e)
+        return jsonify({"message": "An error occurred while creating the promotion"}), 500
 
     tiers = data["tiers"]
     for tier in tiers:
         app = Applicability(code, tier)
 
         try:
-            db.session.add(promo)
             db.session.add(app)
             db.session.commit()
         except Exception as e:
             print(e)
-            return jsonify({"message": "An error occurred while creating the promotion."}), 500  
+            return jsonify({"message": "An error occurred while creating the applicability."}), 500  
 
     return jsonify(promo.json()), 201
 

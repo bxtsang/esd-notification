@@ -18,7 +18,7 @@ CREATE TABLE `promotions` (
 
 DROP TABLE IF EXISTS `applicability`;
 CREATE TABLE `applicability` (
-  `code` varchar(10) NOT NULL,
+  `code` varchar(12) NOT NULL,
   `customer_tier` int NOT NULL,
   PRIMARY KEY (`code`,`customer_tier`),
   CONSTRAINT `applicability_fk1` FOREIGN KEY (`code`) REFERENCES `promotions` (`code`) ON DELETE NO ACTION ON UPDATE NO ACTION
