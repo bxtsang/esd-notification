@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy as alc
 import json
+import requests
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = "mysql+mysqlconnector://root@localhost:3306/notifications"
@@ -77,6 +78,28 @@ def create_promotion(code):
 
     return jsonify(promo.json()), 201
 
+@app.route("/notify/<string:code>")
+def send_notification(code):
+    api_token = '1072538370:AAH2EvVRZJUpoE0SfIXgD2KKrrsN8E8Flq4' # fill in your api token here 
+    base_url = 'https://api.telegram.org/bot{}/'.format(api_token)
+    send_url = base_url + 'sendMessage'
+    # get a list of telegram handles by requesting from customer db
+    to_send = ['396984878', '30663580', '495618700', '109345204'] #simulated
+
+    promo = Promotions.query.filter_by(code = code).first()
+    if promo:
+        msg = promo.message + '\npromo code: {}'.format(code)
+    else:
+        return jsonify({"message": "No promotion with the code {} exists.".format(code)}), 500
+
+    for chat_id in to_send:
+        params =  {'chat_id':chat_id, 'text':msg, 'parse_mode':'MarkdownV2'}
+        r = requests.post(url=send_url, params=params)
+
+    if r.status_code == 200:
+        return jsonify({"message": "Successfully sent notification for promotion with code {}!".format(code)}), 200
+
+    return jsonify({"message": "An error occurred while sending the notification."}), 500
 
 if __name__ == "__main__":
     app.run(port=5000, debug=True)
