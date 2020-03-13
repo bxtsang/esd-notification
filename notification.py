@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy as alc
+import json
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = "mysql+mysqlconnector://root@localhost:3306/notifications"
@@ -19,7 +20,7 @@ class Promotions(db.Model):
     message = db.Column(db.String(300), nullable = False)
 
 
-    def __init__(self, code, discount, name, redemptions, start, end, message):
+    def __init__(self, code, discount, name, redemptions, start, end, message, **kwargs):
         self.code = code
         self.discount = discount
         self.name = name
@@ -37,16 +38,19 @@ class Applicability(db.Model):
     code = db.Column(db.String(10), primary_key = True)
     customer_type = db.Column(db.String(10), primary_key = True)
 
-    def __init__(self, code, customer_type):
+    def __init__(self, code, customer_type, **kwargs):
         self.code = code
         self.customer_type = customer_type
 
     def json(self):
         return {"code": self.code, "customer_type": self.customer_type}
 
+@app.route("/retrieve")
+def retrieve_all():
+    return jsonify({"promotions": [promotion.json() for promotion in Promotions.query.all()]})
 
 @app.route("/create/<string:code>", methods = ['POST'])
-def create_promotion (code):
+def create_promotion(code):
 
     if Promotions.query.filter_by(code = code).first():
         return jsonify({"error": "A promotion with promo code '{}' already exists.".format(code)}), 400
@@ -54,12 +58,17 @@ def create_promotion (code):
     data = request.get_json()
     promo = Promotions(code, **data)
 
-    try:
-        db.session.add(promo)
-        db.session.commit()
-    except Exception as e:
-        print(e)
-        return jsonify({"message": "An error occurred while creating the promotion."}), 500  
+    tiers = data["tiers"]
+    for tier in tiers:
+        app = Applicability(code, tier)
+
+        try:
+            db.session.add(promo)
+            db.session.add(app)
+            db.session.commit()
+        except Exception as e:
+            print(e)
+            return jsonify({"message": "An error occurred while creating the promotion."}), 500  
 
     return jsonify(promo.json()), 201
 
