@@ -36,11 +36,11 @@ class Applicability(db.Model):
     __tablename__ = 'applicability'
 
     code = db.Column(db.String(10), primary_key = True)
-    customer_type = db.Column(db.String(10), primary_key = True)
+    customer_tier = db.Column(db.Integer, primary_key = True)
 
-    def __init__(self, code, customer_type, **kwargs):
+    def __init__(self, code, tier, **kwargs):
         self.code = code
-        self.customer_type = customer_type
+        self.customer_tier = tier
 
     def json(self):
         return {"code": self.code, "customer_type": self.customer_type}

@@ -10,7 +10,7 @@ CREATE TABLE `promotions` (
   `redemptions` int(11) DEFAULT NULL,
   `start_date` date NOT NULL,
   `end_date` date NOT NULL,
-  'message' varchar(300) NOT NULL,
+  `message` varchar(300) NOT NULL,
   PRIMARY KEY (`code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
@@ -20,7 +20,7 @@ DROP TABLE IF EXISTS `applicability`;
 CREATE TABLE `applicability` (
   `code` varchar(10) NOT NULL,
   `customer_tier` int NOT NULL,
-  PRIMARY KEY (`code`,`customer_type`),
+  PRIMARY KEY (`code`,`customer_tier`),
   CONSTRAINT `applicability_fk1` FOREIGN KEY (`code`) REFERENCES `promotions` (`code`) ON DELETE NO ACTION ON UPDATE NO ACTION
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
