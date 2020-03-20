@@ -177,14 +177,30 @@ def apply_promo(code):
         db.session.add(redemption)
         db.session.commit()
     except:
-        return jsonify({"message": "An error occurred while creating the book."}), 500  
+        return jsonify({"message": "An error occurred while redeeming."}), 500  
     
     new_amount = amount - amount * (promo.discount / 100)    
 
     return jsonify({"amount": new_amount, "message": "Promotion successfully redeemed!"}), 201
 
-# delete promo
+# force end a promo
+@app.route("/end/<string:code>")
+def end_promo(code):
+    end_date = datetime.now().date()
 
+    promo = Promotions.query.filter_by(code = code).first()
+
+    if promo == None:
+        return jsonify({"message": "Wrong code"}), 400
+    
+    promo.end_date = end_date
+
+    try:
+        db.session.commit()
+    except:
+        return jsonify({"message": "An error occured while updating the end_date"}), 500
+    
+    return jsonify(promo.json())
 
 
 
