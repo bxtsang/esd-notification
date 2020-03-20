@@ -24,3 +24,12 @@ CREATE TABLE `applicability` (
   CONSTRAINT `applicability_fk1` FOREIGN KEY (`code`) REFERENCES `promotions` (`code`) ON DELETE NO ACTION ON UPDATE NO ACTION
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
+
+
+DROP TABLE IF EXISTS `redeem`;
+CREATE TABLE `redeem` (
+  `user_id` int NOT NULL,
+  `code` varchar(12) NOT NULL,
+  PRIMARY KEY (`user_id`,`code`),
+  CONSTRAINT `redeem_fk1` FOREIGN KEY (`code`) REFERENCES `promotions` (`code`) ON DELETE NO ACTION ON UPDATE NO ACTION
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
