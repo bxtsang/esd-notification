@@ -57,7 +57,6 @@ def create_promotion(code):
         return jsonify({"error": "A promotion with promo code '{}' already exists.".format(code)}), 400
 
     data = request.get_json()
-    print(type(data))
     promo = Promotions(code, **data)
     try:
         db.session.add(promo)
@@ -113,11 +112,25 @@ def get_discount(code):
 @app.route("/applyPromo/<string:code>", methods = ['POST'])
 def apply_promo(code):
     # need to adjust redemptions
+    
+
     promo = Promotions.query.filter_by(code = code).first()
     # print(promo)
     data = request.get_json()
     amount = data['amount']
+    user_id = data['user_id']
+    tier = data['tier']
 
+    # check applicability
+    valid = Applicability.query.filter_by(code = code, tier = tier)
+    if valid == None:
+        return jsonify({"message": "Sorry! You are not eligible for this promotion!"}), 400
+
+    # check redemptions left
+    if promo.redemptions == 0:
+        return jsonify({"message": "Sorry! This promotion has been fully redeemed."})
+
+    
     new_amount = amount - amount * (promo.discount / 100)    
 
     return jsonify({"amount": new_amount}), 200
