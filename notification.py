@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy as alc
 import json
 import requests
+from datetime import datetime
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = "mysql+mysqlconnector://root@localhost:3306/notifications"
@@ -129,8 +130,6 @@ def get_discount(code):
 
 @app.route("/applyPromo/<string:code>", methods = ['POST'])
 def apply_promo(code):
-    # need to adjust redemptions
-    
 
     promo = Promotions.query.filter_by(code = code).first()
     data = request.get_json()
@@ -141,6 +140,21 @@ def apply_promo(code):
     # check correct code
     if promo == None:
         return jsonify({"message": "No such code exists, please try again."})
+
+    # check expiry
+    now = datetime.now().date()
+
+    # start = datetime.strptime(promo.start_date, '%Y-%m-%d')
+    # end = datetime.strptime(promo.end_date, '%Y-%m-%d')
+
+    start = promo.start_date
+    end = promo.end_date
+
+    if now > end:
+        return jsonify({"message": "The promotion has expired!"}), 400
+    
+    if now < start:
+        return jsonify({"message": "The promotion has not started!"})
 
     # check applicability
     valid = Applicability.query.filter_by(code = code, customer_tier = tier).first()
