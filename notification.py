@@ -33,10 +33,12 @@ class Promotions(db.Model):
     def json(self):
         return {"code": self.code, "discount": self.discount, "name": self.name, "redemptions": self.redemptions, "start": self.start_date, "end": self.end_date, "message": self.message}
 
+
+
 class Applicability(db.Model):
     __tablename__ = 'applicability'
 
-    code = db.Column(db.String(10), primary_key = True)
+    code = db.Column(db.String(12), primary_key = True)
     customer_tier = db.Column(db.Integer, primary_key = True)
 
     def __init__(self, code, tier, **kwargs):
@@ -45,6 +47,22 @@ class Applicability(db.Model):
 
     def json(self):
         return {"code": self.code, "customer_type": self.customer_type}
+
+
+
+class Redeem(db.Model):
+    __tablename__ = 'redeem'
+
+    user_id = db.Column(db.Integer, primary_key = True)
+    code = db.Column(db.String(12), primary_key = True)
+
+    def __init__(self, user_id, code):
+        self.code = code
+        self.user_id = user_id
+
+    # represent in dict to prep for jsonify
+    def json(self):
+        return {"user_id": self.user_id, "code": self.code}
 
 @app.route("/retrieve")
 def retrieve_all():
@@ -107,7 +125,7 @@ def get_discount(code):
     promo = Promotions.query.filter_by(code = code).first()
     # print(promo)
 
-    return jsonify({"discount": promo.discount}),200
+    return jsonify({"discount": promo.discount}),201
 
 @app.route("/applyPromo/<string:code>", methods = ['POST'])
 def apply_promo(code):
@@ -115,14 +133,18 @@ def apply_promo(code):
     
 
     promo = Promotions.query.filter_by(code = code).first()
-    # print(promo)
     data = request.get_json()
     amount = data['amount']
     user_id = data['user_id']
     tier = data['tier']
 
+    # check correct code
+    if promo == None:
+        return jsonify({"message": "No such code exists, please try again."})
+
     # check applicability
-    valid = Applicability.query.filter_by(code = code, tier = tier)
+    valid = Applicability.query.filter_by(code = code, customer_tier = tier).first()
+
     if valid == None:
         return jsonify({"message": "Sorry! You are not eligible for this promotion!"}), 400
 
@@ -130,10 +152,22 @@ def apply_promo(code):
     if promo.redemptions == 0:
         return jsonify({"message": "Sorry! This promotion has been fully redeemed."})
 
+    # check if redeemed before
+    if Redeem.query.filter_by(user_id = user_id, code = code).first():
+        return jsonify({"message": "You have already redeemed this promotion! Thank you!"}), 400
+
+    # add to redeem table
+    redemption = Redeem(user_id, code)
+
+    try:
+        db.session.add(redemption)
+        db.session.commit()
+    except:
+        return jsonify({"message": "An error occurred while creating the book."}), 500  
     
     new_amount = amount - amount * (promo.discount / 100)    
 
-    return jsonify({"amount": new_amount}), 200
+    return jsonify({"amount": new_amount, "message": "Promotion successfully redeemed!"}), 201
 
 # delete promo
 
