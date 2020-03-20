@@ -57,6 +57,7 @@ def create_promotion(code):
         return jsonify({"error": "A promotion with promo code '{}' already exists.".format(code)}), 400
 
     data = request.get_json()
+    print(type(data))
     promo = Promotions(code, **data)
     try:
         db.session.add(promo)
@@ -87,6 +88,7 @@ def send_notification(code):
     to_send = ['396984878', '30663580', '495618700', '109345204'] #simulated
 
     promo = Promotions.query.filter_by(code = code).first()
+
     if promo:
         msg = promo.message + '\npromo code: {}'.format(code)
     else:
@@ -100,6 +102,30 @@ def send_notification(code):
         return jsonify({"message": "Successfully sent notification for promotion with code {}!".format(code)}), 200
 
     return jsonify({"message": "An error occurred while sending the notification."}), 500
+
+@app.route("/getDiscount/<string:code>")
+def get_discount(code):
+    promo = Promotions.query.filter_by(code = code).first()
+    # print(promo)
+
+    return jsonify({"discount": promo.discount}),200
+
+@app.route("/applyPromo/<string:code>", methods = ['POST'])
+def apply_promo(code):
+    # need to adjust redemptions
+    promo = Promotions.query.filter_by(code = code).first()
+    # print(promo)
+    data = request.get_json()
+    amount = data['amount']
+
+    new_amount = amount - amount * (promo.discount / 100)    
+
+    return jsonify({"amount": new_amount}), 200
+
+# delete promo
+
+
+
 
 if __name__ == "__main__":
     app.run(port=5000, debug=True)
