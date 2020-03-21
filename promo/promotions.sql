@@ -1,6 +1,6 @@
-drop schema if exists notifications;
-Create schema notifications;
-use notifications;
+drop schema if exists promotions;
+Create schema promotions;
+use promotions;
 
 DROP TABLE IF EXISTS `promotions`;
 CREATE TABLE `promotions` (
@@ -19,8 +19,8 @@ CREATE TABLE `promotions` (
 DROP TABLE IF EXISTS `applicability`;
 CREATE TABLE `applicability` (
   `code` varchar(12) NOT NULL,
-  `customer_tier` int NOT NULL,
-  PRIMARY KEY (`code`,`customer_tier`),
+  `tier` int NOT NULL,
+  PRIMARY KEY (`code`,`tier`),
   CONSTRAINT `applicability_fk1` FOREIGN KEY (`code`) REFERENCES `promotions` (`code`) ON DELETE NO ACTION ON UPDATE NO ACTION
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 

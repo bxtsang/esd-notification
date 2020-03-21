@@ -5,7 +5,7 @@ import requests
 from datetime import datetime
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = "mysql+mysqlconnector://root@localhost:3306/notifications"
+app.config['SQLALCHEMY_DATABASE_URI'] = "mysql+mysqlconnector://root@localhost:3306/promotions"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = alc(app)
@@ -40,14 +40,14 @@ class Applicability(db.Model):
     __tablename__ = 'applicability'
 
     code = db.Column(db.String(12), primary_key = True)
-    customer_tier = db.Column(db.Integer, primary_key = True)
+    tier = db.Column(db.Integer, primary_key = True)
 
     def __init__(self, code, tier, **kwargs):
         self.code = code
-        self.customer_tier = tier
+        self.tier = tier
 
     def json(self):
-        return {"code": self.code, "customer_type": self.customer_type}
+        return {"code": self.code, "tier": self.tier}
 
 
 
@@ -67,7 +67,11 @@ class Redeem(db.Model):
 
 @app.route("/retrieve")
 def retrieve_all():
-    return jsonify({"promotions": [promotion.json() for promotion in Promotions.query.all()]})
+    promotions = [promotion.json() for promotion in Promotions.query.all()]
+    for promotion in promotions:
+        promotion["tiers"] = [app.tier for app in Applicability.query.filter_by(code = promotion['code']).all()]
+    
+    return jsonify(promotions)
 
 @app.route("/create/<string:code>", methods = ['POST'])
 def create_promotion(code):
@@ -96,30 +100,6 @@ def create_promotion(code):
             return jsonify({"message": "An error occurred while creating the applicability."}), 500  
 
     return jsonify(promo.json()), 201
-
-@app.route("/notify/<string:code>")
-def send_notification(code):
-    api_token = '1072538370:AAH2EvVRZJUpoE0SfIXgD2KKrrsN8E8Flq4' # fill in your api token here 
-    base_url = 'https://api.telegram.org/bot{}/'.format(api_token)
-    send_url = base_url + 'sendMessage'
-    # get a list of telegram handles by requesting from customer db
-    to_send = ['396984878', '30663580', '495618700', '109345204'] #simulated
-
-    promo = Promotions.query.filter_by(code = code).first()
-
-    if promo:
-        msg = promo.message + '\npromo code: {}'.format(code)
-    else:
-        return jsonify({"message": "No promotion with the code {} exists.".format(code)}), 500
-
-    for chat_id in to_send:
-        params =  {'chat_id':chat_id, 'text':msg, 'parse_mode':'MarkdownV2'}
-        r = requests.post(url=send_url, params=params)
-
-    if r.status_code == 200:
-        return jsonify({"message": "Successfully sent notification for promotion with code {}!".format(code)}), 200
-
-    return jsonify({"message": "An error occurred while sending the notification."}), 500
 
 @app.route("/getDiscount/<string:code>")
 def get_discount(code):
