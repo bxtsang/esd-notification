@@ -6,12 +6,15 @@ app = Flask(__name__)
 channels = ["Telegram", "E-Mail"]
 
 class Telegram:
-    api_token = '1072538370:AAH2EvVRZJUpoE0SfIXgD2KKrrsN8E8Flq4' # fill in your api token here 
-    base_url = 'https://api.telegram.org/bot{}/'.format(api_token)
-    send_url = base_url + 'sendMessage'
+    
 
     def __init__(self):
-        super().__init__()
+
+        with open ('api_token.txt', 'rt') as file:
+            api_token = file.read()
+
+        self.base_url = 'https://api.telegram.org/bot{}/'.format(api_token)
+        self.send_url = self.base_url + 'sendMessage'
 
     def send_msg(self, chat_id, message):
 
