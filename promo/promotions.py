@@ -3,6 +3,7 @@ from flask_sqlalchemy import SQLAlchemy as alc
 import json
 import requests
 from datetime import datetime
+import pika
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = "mysql+mysqlconnector://root@localhost:3306/promotions"
@@ -48,22 +49,7 @@ class Applicability(db.Model):
 
     def json(self):
         return {"code": self.code, "tier": self.tier}
-
-
-
-class Redeem(db.Model):
-    __tablename__ = 'redeem'
-
-    user_id = db.Column(db.Integer, primary_key = True)
-    code = db.Column(db.String(12), primary_key = True)
-
-    def __init__(self, user_id, code):
-        self.code = code
-        self.user_id = user_id
-
-    # represent in dict to prep for jsonify
-    def json(self):
-        return {"user_id": self.user_id, "code": self.code}
+        
 
 @app.route("/retrieve")
 def retrieve_all():
@@ -72,6 +58,14 @@ def retrieve_all():
         promotion["tiers"] = [app.tier for app in Applicability.query.filter_by(code = promotion['code']).all()]
     
     return jsonify(promotions)
+
+@app.route("/retrieve/<string:code>")
+def retrieve_by_code(code):
+    promotion = Promotions.query.filter_by(code = code).first().json()
+    promotion['tiers'] = [app.tier for app in Applicability.query.filter_by(code = promotion['code']).all()]
+    
+    return jsonify(promotion)
+
 
 @app.route("/create/<string:code>", methods = ['POST'])
 def create_promotion(code):
@@ -108,8 +102,8 @@ def get_discount(code):
 
     return jsonify({"discount": promo.discount}),201
 
-@app.route("/applyPromo/<string:code>", methods = ['POST'])
-def apply_promo(code):
+@app.route("/redeem/<string:code>", methods = ['POST'])
+def redeem(code):
 
     promo = Promotions.query.filter_by(code = code).first()
     data = request.get_json()
@@ -124,9 +118,6 @@ def apply_promo(code):
     # check expiry
     now = datetime.now().date()
 
-    # start = datetime.strptime(promo.start_date, '%Y-%m-%d')
-    # end = datetime.strptime(promo.end_date, '%Y-%m-%d')
-
     start = promo.start_date
     end = promo.end_date
 
@@ -137,7 +128,7 @@ def apply_promo(code):
         return jsonify({"message": "The promotion has not started!"})
 
     # check applicability
-    valid = Applicability.query.filter_by(code = code, customer_tier = tier).first()
+    valid = Applicability.query.filter_by(code = code, tier = tier).first()
 
     if valid == None:
         return jsonify({"message": "Sorry! You are not eligible for this promotion!"}), 400
@@ -146,22 +137,53 @@ def apply_promo(code):
     if promo.redemptions == 0:
         return jsonify({"message": "Sorry! This promotion has been fully redeemed."})
 
-    # check if redeemed before
-    if Redeem.query.filter_by(user_id = user_id, code = code).first():
-        return jsonify({"message": "You have already redeemed this promotion! Thank you!"}), 400
+    # # check if redeemed before
+    # if Redeem.query.filter_by(user_id = user_id, code = code).first():
+    #     return jsonify({"message": "You have already redeemed this promotion! Thank you!"}), 400
 
-    # add to redeem table
-    redemption = Redeem(user_id, code)
-
+    promo.redemptions -= 1
+    
     try:
-        db.session.add(redemption)
         db.session.commit()
     except:
-        return jsonify({"message": "An error occurred while redeeming."}), 500  
+        return jsonify({"message": "An error occurred while redeeming."}), 500
+
+    # add to redemption
+    redemption = {"user_id": user_id, "code": code}
+    send_redemption(redemption)
     
     new_amount = amount - amount * (promo.discount / 100)    
 
     return jsonify({"amount": new_amount, "message": "Promotion successfully redeemed!"}), 201
+
+def send_redemption(redemption):
+    hostname = "localhost" # default broker hostname. Web management interface default at http://localhost:15672
+    port = 5672 # default messaging port.
+    # connect to the broker and set up a communication channel in the connection
+    connection = pika.BlockingConnection(pika.ConnectionParameters(host=hostname, port=port))
+        # Note: various network firewalls, filters, gateways (e.g., SMU VPN on wifi), may hinder the connections;
+        # If "pika.exceptions.AMQPConnectionError" happens, may try again after disconnecting the wifi and/or disabling firewalls
+    channel = connection.channel()
+
+    # set up the exchange if the exchange doesn't exist
+    exchangename="promo"
+    channel.exchange_declare(exchange=exchangename, exchange_type='direct')
+
+    channelqueue = channel.queue_declare(queue="redemption", durable=True) # 'durable' makes the queue survive broker restarts so that the messages in it survive broker restarts too
+    queue_name = channelqueue.method.queue
+    channel.queue_bind(exchange=exchangename, queue=queue_name, routing_key='redemption.promo') # bind the queue to the exchange via the key
+
+    message = json.dumps(redemption, default=str) # convert a JSON object to a string
+
+    # send the message
+    # always inform Monitoring for logging no matter if successful or not
+    channel.basic_publish(exchange=exchangename, routing_key="redemption.promo", body=message)
+        # By default, the message is "transient" within the broker;
+        #  i.e., if the monitoring is offline or the broker cannot match the routing key for the message, the message is lost.
+        # If need durability of a message, need to declare the queue in the sender (see sample code below).
+
+    
+
 
 # force end a promo
 @app.route("/end/<string:code>")
