@@ -39,10 +39,10 @@ def send_notif():
     channels = data['channels']
     promo = data['promo']
     tiers = promo['tiers']
-
-    to_send = [{'user_id': 1,
-                'Telegram': '396984878'},
-                {'name': "bob", 'user_id': 2, 'Telegram': 'soewofijawof', 'E-Mail': "bxtsang.2018@sis.smu.edu.sg"}] #get list of customers
+    tiers_str = ''.join([str(tier) for tier in tiers])
+    
+    r = requests.get("http://127.0.0.1:5001/ESDproject/view?tier={}".format(tiers_str))
+    to_send = r.json()
 
     details = "promo code: {} \n discount: {} \n valid period: {} - {} \n number of redemptions: {}".format(promo['code'], promo['discount'], promo['start'], promo['end'], promo['redemptions'])
 
@@ -55,7 +55,7 @@ def send_notif():
         tele_fail = []
 
         for customer in to_send:
-            r = tele.send_msg(customer['Telegram'], message)
+            r = tele.send_msg(customer['tele_id'], message)
             print(r)
             if r != 200:
                 tele_fail.append(customer)
