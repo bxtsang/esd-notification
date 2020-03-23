@@ -43,7 +43,7 @@ class Applicability(db.Model):
     code = db.Column(db.String(12), primary_key = True)
     tier = db.Column(db.Integer, primary_key = True)
 
-    def __init__(self, code, tier, **kwargs):
+    def __init__(self, code, tier):
         self.code = code
         self.tier = tier
 
