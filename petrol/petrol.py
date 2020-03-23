@@ -3,7 +3,10 @@ from flask_sqlalchemy import SQLAlchemy as alc
 import json
 import requests
 
+from flask_cors import CORS
+
 app = Flask(__name__)
+CORS(app)
 app.config['SQLALCHEMY_DATABASE_URI'] = "mysql+mysqlconnector://root@localhost:3306/petrol"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 

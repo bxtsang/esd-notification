@@ -1,7 +1,10 @@
 from flask import Flask, request, jsonify
 import json
 import requests
+from flask_cors import CORS
+
 app = Flask(__name__)
+CORS(app)
 
 channels = ["Telegram", "E-Mail"]
 
