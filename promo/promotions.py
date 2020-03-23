@@ -95,14 +95,7 @@ def create_promotion(code):
 
     return jsonify(promo.json()), 201
 
-@app.route("/getDiscount/<string:code>")
-def get_discount(code):
-    promo = Promotions.query.filter_by(code = code).first()
-    # print(promo)
-
-    return jsonify({"discount": promo.discount}),201
-
-@app.route("/redeem/<string:code>", methods = ['POST'])
+@app.route("/redeem/<string:code>", methods = ['PUT'])
 def redeem(code):
 
     promo = Promotions.query.filter_by(code = code).first()
@@ -150,11 +143,9 @@ def redeem(code):
 
     # add to redemption
     redemption = {"user_id": user_id, "code": code}
-    send_redemption(redemption)
-    
-    new_amount = amount - amount * (promo.discount / 100)    
+    send_redemption(redemption)  
 
-    return jsonify({"amount": new_amount, "message": "Promotion successfully redeemed!"}), 201
+    return jsonify({"discount": promo.discount, "message": "Promotion successfully redeemed!"}), 201
 
 def send_redemption(redemption):
     hostname = "localhost" # default broker hostname. Web management interface default at http://localhost:15672
