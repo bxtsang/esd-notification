@@ -38,7 +38,8 @@ def send_notif():
     tiers = promo['tiers']
 
     to_send = [{'user_id': 1,
-                'Telegram': '396984878'}] #get list of customers
+                'Telegram': '396984878'},
+                {'name': "bob", 'user_id': 2, 'Telegram': 'soewofijawof', 'E-Mail': "bxtsang.2018@sis.smu.edu.sg"}] #get list of customers
 
     details = "promo code: {} \n discount: {} \n valid period: {} - {} \n number of redemptions: {}".format(promo['code'], promo['discount'], promo['start'], promo['end'], promo['redemptions'])
 
