@@ -4,13 +4,96 @@ import json
 import requests
 from datetime import datetime
 import pika
-
+from flask_graphql import GraphQLView
+from graphene import ObjectType, String, Int, Field, List, Schema
+from graphene.types.datetime import Date
 from flask_cors import CORS
 
 app = Flask(__name__)
 CORS(app)
 app.config['SQLALCHEMY_DATABASE_URI'] = "mysql+mysqlconnector://root@localhost:3306/promotions"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+
+
+
+
+
+
+
+######## GRAPHQL settings ##########
+class Promotion(ObjectType):
+    code = String()
+    discount = Int()
+    name = String()
+    redemptions = Int()
+    start = String()
+    end = String()
+    message = String()
+
+class EndPromo(ObjectType):
+    message = String()
+
+class Redeem(ObjectType):
+    discount = Int()
+    message = String()
+
+class Create(ObjectType):
+    message = String()
+
+class Query(ObjectType):
+    promotion = Field(Promotion, code = String())
+    promotions = List(Promotion)
+    tiers = List(Int, code = String())
+    create = Field(Create, code = String(), discount = Int(), name = String(), redemptions = Int(), start = String(), end = String(), message = String(), tiers = List(Int))
+    redeem = Field(Redeem, code = String(), userId = Int(), tier = Int())
+    endPromo = Field(EndPromo, code = String())
+
+    def resolve_promotion(parent, info, code):
+        r = requests.get("http://127.0.0.1:5100/retrieve/{}".format(code)).json()
+        return r
+        
+    def resolve_promotions(parent, info):
+        r = requests.get("http://127.0.0.1:5100/retrieve").json()
+        return r
+
+    def resolve_tiers(parent, info, code):
+        r = requests.get("http://127.0.0.1:5100/retrieveTiers/{}".format(code)).json()
+        return r
+
+    def resolve_create(parent, info, code, discount, name, redemptions, start, end, message, tiers):
+        details = {"discount" : discount,
+                    "name" : name,
+                    "redemptions" : redemptions,
+                    "start" : start,
+                    "end" : end,
+                    "message" : message,
+                    "tiers" : tiers}
+        r = requests.post("http://127.0.0.1:5100/create/{}".format(code), json = details)
+        if r.status_code != 200:
+            return r.json()
+        return r.json()
+
+    def resolve_redeem(parent, info, code, userId, tier):
+        user = {"user_id": userId,
+                "tier": tier}
+        r = requests.put("http://127.0.0.1:5100/redeem/{}".format(code), json = user)
+        return r.json()
+
+    def resolve_endPromo(parent, info, code):
+        r = requests.put("http://127.0.0.1:5100/end/{}".format(code))
+        return r.json()
+
+promotion_schema = Schema(query = Query)
+
+app.add_url_rule('/graphql', view_func=GraphQLView.as_view('graphql', schema=promotion_schema, graphiql=True))
+######## GraphQL END #########
+
+
+
+
+
+
 
 db = alc(app)
 
@@ -39,7 +122,6 @@ class Promotions(db.Model):
         return {"code": self.code, "discount": self.discount, "name": self.name, "redemptions": self.redemptions, "start": self.start_date, "end": self.end_date, "message": self.message}
 
 
-
 class Applicability(db.Model):
     __tablename__ = 'applicability'
 
@@ -54,27 +136,34 @@ class Applicability(db.Model):
         return {"code": self.code, "tier": self.tier}
         
 
-@app.route("/retrieve")
+@app.route("/retrieve") #graphql done
 def retrieve_all():
     promotions = [promotion.json() for promotion in Promotions.query.all()]
     for promotion in promotions:
-        promotion["tiers"] = [app.tier for app in Applicability.query.filter_by(code = promotion['code']).all()]
+        promotion["start"] = promotion["start"].strftime("%d-%m-%Y")
+        promotion["end"] = promotion["end"].strftime("%d-%m-%Y")
     
-    return jsonify(promotions)
+    return jsonify(promotions), 200
 
-@app.route("/retrieve/<string:code>")
+@app.route("/retrieve/<string:code>") #graphql done
 def retrieve_by_code(code):
     promotion = Promotions.query.filter_by(code = code).first().json()
-    promotion['tiers'] = [app.tier for app in Applicability.query.filter_by(code = promotion['code']).all()]
+    promotion["start"] = promotion["start"].strftime("%d-%m-%Y")
+    promotion["end"] = promotion["end"].strftime("%d-%m-%Y")
     
-    return jsonify(promotion)
+    return jsonify(promotion), 200
+
+@app.route("/retrieveTiers/<string:code>") #graphql done
+def retrieve_applicability(code):
+    tiers = [app.tier for app in Applicability.query.filter_by(code = code).all()]
+    return jsonify(tiers), 200
 
 
-@app.route("/create/<string:code>", methods = ['POST'])
+@app.route("/create/<string:code>", methods = ['POST']) #graphql done
 def create_promotion(code):
 
     if Promotions.query.filter_by(code = code).first():
-        return jsonify({"error": "A promotion with promo code '{}' already exists.".format(code)}), 400
+        return jsonify({"message": "A promotion with promo code '{}' already exists.".format(code)}), 400
 
     data = request.get_json()
     promo = Promotions(code, **data)
@@ -96,20 +185,19 @@ def create_promotion(code):
             print(e)
             return jsonify({"message": "An error occurred while creating the applicability."}), 500  
 
-    return jsonify(promo.json()), 201
+    return jsonify({"message": "Success!"}), 200
 
-@app.route("/redeem/<string:code>", methods = ['PUT'])
+@app.route("/redeem/<string:code>", methods = ['PUT']) #graphql done
 def redeem(code):
 
     promo = Promotions.query.filter_by(code = code).first()
     data = request.get_json()
-    amount = data['amount']
     user_id = data['user_id']
     tier = data['tier']
 
     # check correct code
     if promo == None:
-        return jsonify({"message": "No such code exists, please try again."})
+        return jsonify({"message": "No such code exists, please try again."}), 400
 
     # check expiry
     now = datetime.now().date()
@@ -176,11 +264,9 @@ def send_redemption(redemption):
         #  i.e., if the monitoring is offline or the broker cannot match the routing key for the message, the message is lost.
         # If need durability of a message, need to declare the queue in the sender (see sample code below).
 
-    
-
 
 # force end a promo
-@app.route("/end/<string:code>")
+@app.route("/end/<string:code>", methods = ['PUT']) #graphql done
 def end_promo(code):
     end_date = datetime.now().date()
 
@@ -196,9 +282,9 @@ def end_promo(code):
     except:
         return jsonify({"message": "An error occured while updating the end_date"}), 500
     
-    return jsonify(promo.json())
+    return jsonify({"message": "Promotion with code {} has been ended.".format(code)}), 200
 
 
 
 if __name__ == "__main__":
-    app.run(port=5000, debug=True)
+    app.run(port=5100, debug=True)

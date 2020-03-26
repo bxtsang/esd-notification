@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 import json
 import requests
 from flask_cors import CORS
+import smtplib, ssl
 
 app = Flask(__name__)
 CORS(app)
@@ -50,7 +51,7 @@ def send_notif():
 
     fail = {}
 
-    if "Telegram" in channels:
+    if "telegram" in channels:
         tele = Telegram()
         tele_fail = []
 
@@ -62,8 +63,19 @@ def send_notif():
     
         fail["Telegram"] = tele_fail
 
+    if "email" in channels:
+        port = 465  # For SSL
+        password = input("Type your password and press enter: ")
+
+        # Create a secure SSL context
+        context = ssl.create_default_context()
+
+        with smtplib.SMTP_SSL("smtp.gmail.com", port, context=context) as server:
+            server.login("my@gmail.com", password)
+            # Send email here
+
     return jsonify(fail)
 
 
 if __name__ == "__main__":
-    app.run(port=5100, debug=True)
+    app.run(port=5200, debug=True)
