@@ -22,6 +22,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 
 ######## GRAPHQL settings ##########
+
 class Promotion(ObjectType):
     code = String()
     discount = Int()
@@ -30,6 +31,7 @@ class Promotion(ObjectType):
     start = String()
     end = String()
     message = String()
+    tiers = List(Int)
 
 class EndPromo(ObjectType):
     message = String()
@@ -142,6 +144,8 @@ def retrieve_all():
     for promotion in promotions:
         promotion["start"] = promotion["start"].strftime("%d-%m-%Y")
         promotion["end"] = promotion["end"].strftime("%d-%m-%Y")
+        promotion["tiers"] = [app.tier for app in Applicability.query.filter_by(code = promotion["code"]).all()]
+    print(promotion)
     
     return jsonify(promotions), 200
 
@@ -150,6 +154,7 @@ def retrieve_by_code(code):
     promotion = Promotions.query.filter_by(code = code).first().json()
     promotion["start"] = promotion["start"].strftime("%d-%m-%Y")
     promotion["end"] = promotion["end"].strftime("%d-%m-%Y")
+    promotion["tiers"] = [app.tier for app in Applicability.query.filter_by(code = promotion["code"]).all()]
     
     return jsonify(promotion), 200
 
