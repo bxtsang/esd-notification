@@ -7,11 +7,9 @@ import smtplib, ssl
 app = Flask(__name__)
 CORS(app)
 
-channels = ["Telegram", "E-Mail"]
 
 class Telegram:
     
-
     def __init__(self):
 
         with open ('api_token.txt', 'rt') as file:
@@ -65,16 +63,21 @@ def send_notif():
 
     if "email" in channels:
         port = 465  # For SSL
-        password = input("Type your password and press enter: ")
+        smtp_server = "smtp.gmail.com"
+        sender_email = "jpiswatchingyou@gmail.com"  # Enter your address
+        password = "jiapengiswatchingyou123"
+        message = """\
+        Subject: :)
 
-        # Create a secure SSL context
+        Fantasma was here."""
+
         context = ssl.create_default_context()
+        for customer in to_send:
+            with smtplib.SMTP_SSL(smtp_server, port, context=context) as server:
+                server.login(sender_email, password)
+                server.sendmail("Fantasma@gmail.com", customer["email"], message)
 
-        with smtplib.SMTP_SSL("smtp.gmail.com", port, context=context) as server:
-            server.login("my@gmail.com", password)
-            # Send email here
-
-    return jsonify(fail)
+    return jsonify(fail), 200
 
 
 if __name__ == "__main__":

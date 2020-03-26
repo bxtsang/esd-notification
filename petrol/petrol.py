@@ -29,7 +29,6 @@ class Petrol(db.Model):
     def json(self):
         return {"name": self.name, "rating": self.rating, "storage": self.storage, "cost": self.cost}
 
-
 @app.route("/petrol")
 def get_all():
     return jsonify([petrol.json() for petrol in Petrol.query.all()]), 200
