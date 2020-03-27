@@ -43,7 +43,7 @@ def send_notif():
     r = requests.get("http://127.0.0.1:5001/ESDproject/view?tier={}".format(tiers_str))
     to_send = r.json()
 
-    details = "promo code: {} \n discount: {} \n valid period: {} - {} \n number of redemptions: {}".format(promo['code'], promo['discount'], promo['start'], promo['end'], promo['redemptions'])
+    details = "promo code: {} \ndiscount: {} \nvalid period: {} - {} \nnumber of redemptions: {}".format(promo['code'], promo['discount'], promo['start'], promo['end'], promo['redemptions'])
 
     message = promo['name'] + '\n' + data['message'] + '\n' + details
 
@@ -59,23 +59,27 @@ def send_notif():
             if r != 200:
                 tele_fail.append(customer)
     
-        fail["Telegram"] = tele_fail
+        fail["telegram"] = tele_fail
+
 
     if "email" in channels:
         port = 465  # For SSL
         smtp_server = "smtp.gmail.com"
         sender_email = "jpiswatchingyou@gmail.com"  # Enter your address
         password = "jiapengiswatchingyou123"
-        message = """\
-        Subject: :)
-
-        Fantasma was here."""
+        email_fail = []
 
         context = ssl.create_default_context()
         for customer in to_send:
-            with smtplib.SMTP_SSL(smtp_server, port, context=context) as server:
-                server.login(sender_email, password)
-                server.sendmail("Fantasma@gmail.com", customer["email"], message)
+
+            if customer["email"]:
+                with smtplib.SMTP_SSL(smtp_server, port, context=context) as server:
+                    server.login(sender_email, password)
+                    server.sendmail(sender_email, customer["email"], "Subject:" + message)
+            else:
+                email_fail.append(customer)
+
+        fail["email"] = email_fail
 
     return jsonify(fail), 200
 

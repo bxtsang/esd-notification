@@ -8,13 +8,17 @@ from flask_graphql import GraphQLView
 from graphene import ObjectType, String, Int, Field, List, Schema
 from graphene.types.datetime import Date
 from flask_cors import CORS
+from os import environ
+
+
 
 app = Flask(__name__)
-CORS(app)
-app.config['SQLALCHEMY_DATABASE_URI'] = "mysql+mysqlconnector://root@localhost:3306/promotions"
+dbname = "promotions"
+app.config['SQLALCHEMY_DATABASE_URI'] = environ.get('dbURL') + dbname
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
-
+CORS(app)
+host = "0.0.0.0"
+port = 5000
 
 
 
@@ -52,15 +56,15 @@ class Query(ObjectType):
     endPromo = Field(EndPromo, code = String())
 
     def resolve_promotion(parent, info, code):
-        r = requests.get("http://127.0.0.1:5100/retrieve/{}".format(code)).json()
+        r = requests.get("http://{}:{}}/retrieve/{}".format(host, port, code)).json()
         return r
         
     def resolve_promotions(parent, info):
-        r = requests.get("http://127.0.0.1:5100/retrieve").json()
+        r = requests.get("http://{}:{}/retrieve".format(host,port)).json()
         return r
 
     def resolve_tiers(parent, info, code):
-        r = requests.get("http://127.0.0.1:5100/retrieveTiers/{}".format(code)).json()
+        r = requests.get("http://{}:{}/retrieveTiers/{}".format(host, port, code)).json()
         return r
 
     def resolve_create(parent, info, code, discount, name, redemptions, start, end, message, tiers):
@@ -71,7 +75,7 @@ class Query(ObjectType):
                     "end" : end,
                     "message" : message,
                     "tiers" : tiers}
-        r = requests.post("http://127.0.0.1:5100/create/{}".format(code), json = details)
+        r = requests.post("http://{}:{}/create/{}".format(host, port, code), json = details)
         if r.status_code != 200:
             return r.json()
         return r.json()
@@ -79,11 +83,11 @@ class Query(ObjectType):
     def resolve_redeem(parent, info, code, userId, tier):
         user = {"user_id": userId,
                 "tier": tier}
-        r = requests.put("http://127.0.0.1:5100/redeem/{}".format(code), json = user)
+        r = requests.put("http://{}:{}/redeem/{}".format(host, port, code), json = user)
         return r.json()
 
     def resolve_endPromo(parent, info, code):
-        r = requests.put("http://127.0.0.1:5100/end/{}".format(code))
+        r = requests.put("http://{}:{}/end/{}".format(host, port, code))
         return r.json()
 
 promotion_schema = Schema(query = Query)
@@ -292,4 +296,4 @@ def end_promo(code):
 
 
 if __name__ == "__main__":
-    app.run(port=5100, debug=True)
+    app.run(host = host, port=port, debug=True)
