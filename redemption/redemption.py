@@ -5,6 +5,7 @@ import requests
 from datetime import datetime
 import pika
 import sys
+from os import environ
 
 hostname = "localhost" # default hostname
 port = 5672 # default port
@@ -18,7 +19,9 @@ exchangename="promo"
 channel.exchange_declare(exchange=exchangename, exchange_type='direct')
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = "mysql+mysqlconnector://root@localhost:3306/redemption"
+
+dbname = redemption
+app.config['SQLALCHEMY_DATABASE_URI'] = environ.get('dbURL') + dbname
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = alc(app)

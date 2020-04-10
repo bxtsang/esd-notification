@@ -14,10 +14,10 @@ from os import environ
 
 app = Flask(__name__)
 dbname = "promotions"
-app.config['SQLALCHEMY_DATABASE_URI'] = environ.get('dbURL') + dbname
+app.config['SQLALCHEMY_DATABASE_URI'] = "mysql+mysqlconnector://root@localhost:3306/promotions"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 CORS(app)
-host = "0.0.0.0"
+host = 'localhost'
 port = 5000
 
 
@@ -25,7 +25,7 @@ port = 5000
 
 
 
-######## GRAPHQL settings ##########
+######## GRAPHQL query ##########
 
 class Promotion(ObjectType):
     code = String()
@@ -56,9 +56,9 @@ class Query(ObjectType):
     endPromo = Field(EndPromo, code = String())
 
     def resolve_promotion(parent, info, code):
-        r = requests.get("http://{}:{}}/retrieve/{}".format(host, port, code)).json()
+        r = requests.get("http://{}:{}/retrieve/{}".format(host, port, code)).json()
         return r
-        
+
     def resolve_promotions(parent, info):
         r = requests.get("http://{}:{}/retrieve".format(host,port)).json()
         return r
@@ -140,7 +140,7 @@ class Applicability(db.Model):
 
     def json(self):
         return {"code": self.code, "tier": self.tier}
-        
+
 
 @app.route("/retrieve") #graphql done
 def retrieve_all():
@@ -149,8 +149,8 @@ def retrieve_all():
         promotion["start"] = promotion["start"].strftime("%d-%m-%Y")
         promotion["end"] = promotion["end"].strftime("%d-%m-%Y")
         promotion["tiers"] = [app.tier for app in Applicability.query.filter_by(code = promotion["code"]).all()]
-    print(promotion)
-    
+    print(promotions)
+
     return jsonify(promotions), 200
 
 @app.route("/retrieve/<string:code>") #graphql done
@@ -159,7 +159,7 @@ def retrieve_by_code(code):
     promotion["start"] = promotion["start"].strftime("%d-%m-%Y")
     promotion["end"] = promotion["end"].strftime("%d-%m-%Y")
     promotion["tiers"] = [app.tier for app in Applicability.query.filter_by(code = promotion["code"]).all()]
-    
+
     return jsonify(promotion), 200
 
 @app.route("/retrieveTiers/<string:code>") #graphql done
@@ -192,7 +192,7 @@ def create_promotion(code):
             db.session.commit()
         except Exception as e:
             print(e)
-            return jsonify({"message": "An error occurred while creating the applicability."}), 500  
+            return jsonify({"message": "An error occurred while creating the applicability."}), 500
 
     return jsonify({"message": "Success!"}), 200
 
@@ -216,7 +216,7 @@ def redeem(code):
 
     if now > end:
         return jsonify({"message": "The promotion has expired!"}), 400
-    
+
     if now < start:
         return jsonify({"message": "The promotion has not started!"})
 
@@ -235,7 +235,7 @@ def redeem(code):
     #     return jsonify({"message": "You have already redeemed this promotion! Thank you!"}), 400
 
     promo.redemptions -= 1
-    
+
     try:
         db.session.commit()
     except:
@@ -243,15 +243,17 @@ def redeem(code):
 
     # add to redemption
     redemption = {"user_id": user_id, "code": code}
-    send_redemption(redemption)  
-
+    send_redemption(redemption)
+    print()
+    print(promo.discount)
+    print()
     return jsonify({"discount": promo.discount, "message": "Promotion successfully redeemed!"}), 201
 
 def send_redemption(redemption):
-    hostname = "localhost" # default broker hostname. Web management interface default at http://localhost:15672
+    hostname = host # default broker hostname. Web management interface default at http://localhost:15672
     port = 5672 # default messaging port.
     # connect to the broker and set up a communication channel in the connection
-    connection = pika.BlockingConnection(pika.ConnectionParameters(host=hostname, port=port))
+    connection = pika.BlockingConnection(pika.ConnectionParameters(host="13.229.116.2", port=port))
         # Note: various network firewalls, filters, gateways (e.g., SMU VPN on wifi), may hinder the connections;
         # If "pika.exceptions.AMQPConnectionError" happens, may try again after disconnecting the wifi and/or disabling firewalls
     channel = connection.channel()
@@ -283,17 +285,17 @@ def end_promo(code):
 
     if promo == None:
         return jsonify({"message": "Wrong code"}), 400
-    
+
     promo.end_date = end_date
 
     try:
         db.session.commit()
     except:
         return jsonify({"message": "An error occured while updating the end_date"}), 500
-    
+
     return jsonify({"message": "Promotion with code {} has been ended.".format(code)}), 200
 
 
 
 if __name__ == "__main__":
-    app.run(host = host, port=port, debug=True)
+    app.run(host = 'localhost', port=port, debug=True)

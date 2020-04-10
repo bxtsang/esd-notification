@@ -41,7 +41,7 @@ def send_notif():
     tiers_str = ''.join([str(tier) for tier in tiers])
 
     query = {"query": "query { getCustomers (tier:" + tiers_str + ") { userID, name, email, teleID } }" }
-    r = requests.post("http://g6t3esd.team:8000/customer", json = query)
+    r = requests.post("http://g6t3esd.team:8000/customer", json = query, headers = {"apikey": "B6NyqU2uDUwWGGnEi5u2y4zVn7yVXwoW"})
     to_send = r.json()["data"]["getCustomers"]
 
     details = "promo code: {} \ndiscount: {} \nvalid period: {} - {} \nnumber of redemptions: {}".format(promo['code'], promo['discount'], promo['start'], promo['end'], promo['redemptions'])
